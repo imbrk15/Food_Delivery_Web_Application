@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        textarea,
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            resize: vertical;
+            height: 100px;
+        }
+
+        button[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease-in-out;
+        }
+
+        button[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+
+        p {
+            text-align: center;
+            color: #777;
+            margin-top: 20px;
+        }
+
+        .total-price {
+            font-weight: bold;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container">
+        <a class="navbar-brand" href="#">Restaurant Dashboard</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                       data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Welcome, {{ username }}
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <form action="{{ url_for('logout') }}" method="post">
+                            <button type="submit" class="dropdown-item">Logout</button>
+                        </form>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <h1>Checkout</h1>
+    <form id="checkoutForm" action="{{ url_for('checkout') }}" method="post">
+        <div class="selected-items">
+            <h2>Selected Items</h2>
+            <ul class="list-group">
+                {% for item in selected_items %}
+                <li class="list-group-item">{{ item.name }} - Quantity: {{ item.quantity }} - Price: ${{ item.price }} - Total: ${{ item.quantity * item.price }}</li>
+                {% endfor %}
+            </ul>
+            <p class="total-price">Total: ${{ total }}</p>
+        </div>
+        <div class="form-group">
+            <label for="address">Delivery Address:</label>
+            <textarea id="address" name="address" class="form-control" required></textarea>
+        </div>
+        <div class="form-group">
+            <label for="paymentMethod">Payment Method:</label>
+            <select id="paymentMethod" name="paymentMethod" class="form-control" required>
+                <option value="">Select Payment Method</option>
+                <option value="card">Card</option>
+                <option value="cod">Cash on Delivery (COD)</option>
+                <option value="upi">UPI</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="phoneNumber">Phone Number:</label>
+            <input type="text" id="phoneNumber" name="phoneNumber" class="form-control" required>
+        </div>
+        <button type="submit" id="checkoutBtn" class="btn btn-primary">Place Order</button>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkoutForm = document.getElementById('checkoutForm');
+
+        checkoutForm.addEventListener('submit', function(event) {
+            // Remove the following line to allow form submission
+            // event.preventDefault(); // Prevent form submission
+
+            const formData = new FormData(checkoutForm);
+            const selectedItems = JSON.parse(sessionStorage.getItem('selectedItems'));
+            selectedItems.forEach(item => {
+                formData.append('selected_items[]', JSON.stringify(item)); // Append selected item object
+            });
+
+            // Send a POST request with selected items and order details to the server
+            fetch('/checkout', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                window.location.href = '/dashboard'; // Redirect to the dashboard
+            })
+            .catch(error => console.error('Error:', error));
+        });
+
+        // Retrieve selected items from session storage and display them
+        const selectedItems = JSON.parse(sessionStorage.getItem('selectedItems'));
+        const selectedItemsContainer = document.querySelector('.selected-items ul');
+        let total = 0;
+        selectedItems.forEach(item => {
+            const li = document.createElement('li');
+            const totalPrice = item.quantity * item.price;
+            total += totalPrice;
+            li.textContent = `${item.name} - Quantity: ${item.quantity} - Price: $${item.price} - Total: $${totalPrice}`;
+            selectedItemsContainer.appendChild(li);
+        });
+        document.querySelector('.total-price').textContent = `Total: $${total}`;
+
+        // Enable/disable checkout button based on delivery address
+        const addressInput = document.getElementById('address');
+        const checkoutBtn = document.getElementById('checkoutBtn');
+        addressInput.addEventListener('input', function() {
+            checkoutBtn.disabled = !this.value.trim();
+        });
+        checkoutBtn.disabled = !addressInput.value.trim();
+    });
+</script>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
